@@ -1,85 +1,57 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color: #213547;
-  background-color: #ffffff;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: none;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: #f4f6f8;
-}
-
-/* -------- TITULOS -------- */
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-/* -------- BOTONES -------- */
-button {
-  border-radius: 8px;
-  border: none;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  background-color: #1a1a1a;
-  color: white;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-button:hover {
-  background-color: #333;
-}
-
-/* -------- TARJETAS -------- */
-.card{
-  height: 100%;
-  border-radius: 12px;
-  transition: transform .2s ease, box-shadow .2s ease;
-}
-
-.card:hover{
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-}
-
-/* -------- IMAGENES TARJETAS -------- */
-.card-img-top{
-  height: 220px;
-  object-fit: cover;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-}
-
-/* -------- CONTENEDOR LISTADO -------- */
-.devices-container{
-  padding: 20px;
-}
-
-/* -------- RESPONSIVE -------- */
-@media (max-width:768px){
-  .card-img-top{
-    height:180px;
+/* ===== ESTILO GLOBAL DEL BODY =====
+   Define fondo general oscuro degradado y elimina margen default del navegador */
+   body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(
+      135deg,
+      #000000,
+      #111111,
+      #1c1c1c
+    );
+    background-attachment: fixed;
   }
-}
+  
+  
+  /* ===== TARJETAS =====
+     Estilo base reutilizable para cards de productos/contenido */
+  .card{
+    height: 100%;
+    border-radius: 12px;
+    transition: transform .2s ease, box-shadow .2s ease;
+    background-color: #212529;
+    color: white;
+    border: 1px solid #2a2a2a;
+  }
+  
+  /* Animación hover de tarjetas */
+  .card:hover{
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  }
+  
+  
+  /* ===== IMAGENES DE TARJETAS =====
+     Ajusta proporción y recorte automático */
+  .card-img-top{
+    height: 220px;
+    object-fit: cover;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+  
+  
+  /* ===== CONTENEDOR DE LISTADOS =====
+     Da espacio interno a secciones de catálogo/listas */
+  .devices-container{
+    padding: 20px;
+  }
+  
+  
+  /* ===== RESPONSIVE =====
+     Reduce tamaño de imagen en pantallas pequeñas */
+  @media (max-width:768px){
+    .card-img-top{
+      height:180px;
+    }
+  }

@@ -12,6 +12,8 @@ export function Header({ search, setSearch }) {
             alt="logo"
             style={{ height: "60px", objectFit: "contain" }}
           />
+          <span className="navbar-brand mb-0 h1 fs-3">
+          </span>
         </div>
 
         {/* Buscador */}
@@ -24,18 +26,16 @@ export function Header({ search, setSearch }) {
           />
         </div>
 
-        {/* Acciones usuario */}
-        <div className="d-flex gap-4 text-white fw-semibold">
+        {/* Botones */}
+        <div className="d-flex gap-2">
 
-          <span style={{ cursor: "pointer" }}>
-            🛒 Carrito
-          </span>
-
-          <span style={{ cursor: "pointer" }}>
+          <button className="btn btn-outline-light">
             👤 Mi cuenta
-          </span>
+          </button>
 
-
+          <button className="btn btn-warning">
+            🛒 Carrito
+          </button>
 
         </div>
 
