@@ -1,182 +1,503 @@
 import { useState } from "react";
 
 export function AdminPanel({ devices, onUpdate }) {
-  const [tab, setTab] = useState("add"); // 'add' o 'edit'
+  const [tab, setTab] = useState("add");
   const [selectedId, setSelectedId] = useState("");
-  
-  // Estado inicial con TODOS los campos de tu base de datos
+
   const initialState = {
-    nombre: "", referencia: "", marca: "", tipo: "", 
-    fecha: "", precio: "", stock: "", imagen: "", 
-    descripcion: "", procesador: "", ram: "", 
-    almacenamiento: "", camaras: "", bateria: "", conectividad: ""
+    nombre: "",
+    referencia: "",
+    marca: "Samsung",
+    tipo: "Celular",
+    fecha: "",
+    precio: "",
+    stock: 0,
+    imagen: "",
+    descripcion: "",
+    pantalla: "",
+    procesador: "",
+    ram: "",
+    almacenamiento: "",
+    camaras: "",
+    bateria: "",
+    conectividad: "",
+    graficos: ""
   };
 
   const [form, setForm] = useState(initialState);
 
-  // Al elegir un dispositivo para EDITAR
-  const handleSelectEdit = (e) => {
-    const id = e.target.value;
+  const marcas = [
+    "Samsung","Apple","Xiaomi","Motorola","Huawei",
+    "Lenovo","HP","Dell","Asus","Acer"
+  ];
+
+  const handleSelectEdit = async (e) => {
+    const id = Number(e.target.value);
     setSelectedId(id);
-    const dev = devices.find(d => d.ID_Dispositivo === parseInt(id));
-    
-    if (dev) {
-      setForm({
-        nombre: dev.Nombre_Dispositivo || "",
-        referencia: dev.Referencia_Dispositivo || "",
-        marca: dev.Marca_Dispositivo || "",
-        tipo: dev.Tipo_Dispositivo || "",
-        fecha: dev.Fecha_Lanzamiento ? dev.Fecha_Lanzamiento.split('T')[0] : "",
-        precio: dev.Precio_Dispositivo || "",
-        stock: dev.Stock_Dispositivo || "",
-        imagen: dev.Imagen_URL || "",
-        descripcion: dev.Descripcion_Dispositivo || "",
-        // Aquí extraemos las specs si vienen de un JSON o campos sueltos
-        procesador: dev.Procesador || "",
-        ram: dev.RAM || "",
-        almacenamiento: dev.Almacenamiento || "",
-        camaras: dev.Camaras || "",
-        bateria: dev.Bateria || "",
-        conectividad: dev.Conectividad || ""
-      });
-    } else {
+
+    if (!id) {
       setForm(initialState);
+      return;
+    }
+
+    try {
+      const resp = await fetch(`http://localhost:3001/api/devices/${id}`);
+      const data = await resp.json();
+
+      setForm({
+        nombre: data.Nombre_Dispositivo || "",
+        referencia: data.Referencia_Dispositivo || "",
+        marca: data.Marca_Dispositivo || "Samsung",
+        tipo: data.Tipo_Dispositivo || "Celular",
+        fecha: data.Fecha_Lanzamiento
+          ? data.Fecha_Lanzamiento.split("T")[0]
+          : "",
+        precio: data.Precio || "",
+        stock: data.Stock_Dispositivo || 0,
+        imagen: data.Imagen || "",
+        descripcion: data.Descripcion || "",
+        pantalla: data.specs?.Pantalla || "",
+        procesador: data.specs?.Procesador || "",
+        ram: data.specs?.RAM || "",
+        almacenamiento: data.specs?.Almacenamiento || "",
+        camaras: data.specs?.Camaras || "",
+        bateria: data.specs?.Bateria || "",
+        conectividad: data.specs?.Conectividad || "",
+        graficos: data.specs?.Graficos || ""
+      });
+
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleSubmit = async (e, action) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const url = 'http://localhost:5000/api/devices';
-    const method = action === 'edit' ? 'PUT' : 'POST';
-    const finalUrl = action === 'edit' ? `${url}/${selectedId}` : url;
+
+    const endpoint =
+      tab === "add"
+        ? "http://localhost:3001/api/devices"
+        : `http://localhost:3001/api/devices/${selectedId}`;
+
+    const method = tab === "add" ? "POST" : "PUT";
 
     try {
-      const resp = await fetch(finalUrl, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
+      const resp = await fetch(endpoint, {
+        method,
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify(form)
       });
-      if (resp.ok) {
-        alert(`✅ Dispositivo ${action === 'edit' ? 'actualizado' : 'registrado'} correctamente`);
-        if (action === 'add') setForm(initialState);
-        onUpdate(); 
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        alert(data.message);
+        return;
       }
-    } catch (err) { console.error("Error en la petición:", err); }
+
+      alert(
+        tab === "add"
+          ? "✅ Dispositivo agregado"
+          : "✅ Dispositivo actualizado"
+      );
+
+      setForm(initialState);
+      setSelectedId("");
+      setTab("add");
+      onUpdate();
+
+    } catch (err) {
+      console.error(err);
+      alert("Error al conectar con el servidor.");
+    }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("¿Estás seguro de eliminar este producto definitivamente?")) return;
+    if (!selectedId) return;
+
+    if (!window.confirm("¿Eliminar este dispositivo?")) return;
+
     try {
-      const resp = await fetch(`http://localhost:5000/api/devices/${selectedId}`, { method: 'DELETE' });
-      if (resp.ok) {
-        alert("🗑️ Dispositivo eliminado");
-        setForm(initialState);
-        setSelectedId("");
-        onUpdate();
+      const resp = await fetch(
+        `http://localhost:3001/api/devices/${selectedId}`,
+        {
+          method: "DELETE"
+        }
+      );
+
+      if (!resp.ok) {
+        alert("No fue posible eliminar.");
+        return;
       }
-    } catch (err) { console.error(err); }
+
+      alert("🗑️ Dispositivo eliminado");
+
+      setForm(initialState);
+      setSelectedId("");
+      setTab("add");
+      onUpdate();
+
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
-    <div className="card shadow-lg border-0 mb-5" style={{ backgroundColor: "#212529", color: "white", borderRadius: "15px" }}>
-      {/* Pestañas Superiores */}
-      <div className="card-header border-0 d-flex p-0 overflow-hidden" style={{ borderRadius: "15px 15px 0 0" }}>
-        <button 
-          className={`flex-fill py-3 border-0 fw-bold ${tab === 'add' ? 'bg-primary text-white' : 'bg-dark text-secondary'}`}
-          onClick={() => { setTab('add'); setForm(initialState); setSelectedId(""); }}
+    <div
+      className="card shadow-lg border-0 mb-5"
+      style={{
+        background: "#212529",
+        color: "white",
+        borderRadius: "15px"
+      }}
+    >
+      <div className="card-header d-flex p-0 border-0">
+        <button
+          className={`flex-fill btn ${
+            tab === "add"
+              ? "btn-primary"
+              : "btn-dark"
+          }`}
+          onClick={() => {
+            setTab("add");
+            setSelectedId("");
+            setForm(initialState);
+          }}
         >
-          ➕ AÑADIR NUEVO
+          ➕ Añadir
         </button>
-        <button 
-          className={`flex-fill py-3 border-0 fw-bold ${tab === 'edit' ? 'bg-primary text-white' : 'bg-dark text-secondary'}`}
-          onClick={() => setTab('edit')}
+
+        <button
+          className={`flex-fill btn ${
+            tab === "edit"
+              ? "btn-primary"
+              : "btn-dark"
+          }`}
+          onClick={() => setTab("edit")}
         >
-          📝 EDITAR O ELIMINAR
+          📝 Editar / Eliminar
         </button>
       </div>
 
-      <div className="card-body p-4">
-        {tab === 'edit' && (
+      <div className="card-body">
+
+        {tab === "edit" && (
           <div className="mb-4">
-            <label className="form-label small text-info fw-bold">BUSCAR DISPOSITIVO PARA MODIFICAR</label>
-            <select className="form-select bg-dark text-white border-secondary" value={selectedId} onChange={handleSelectEdit}>
-              <option value="">Selecciona un equipo de la lista...</option>
-              {devices.map(d => <option key={d.ID_Dispositivo} value={d.ID_Dispositivo}>{d.Nombre_Dispositivo} ({d.Referencia_Dispositivo})</option>)}
+            <label>Seleccionar dispositivo</label>
+
+            <select
+              className="form-select bg-dark text-white"
+              value={selectedId}
+              onChange={handleSelectEdit}
+            >
+              <option value="">
+                Elegir...
+              </option>
+
+              {devices.map((d) => (
+                <option
+                  key={d.ID_Dispositivo}
+                  value={d.ID_Dispositivo}
+                >
+                  {d.Nombre_Dispositivo}
+                </option>
+              ))}
             </select>
           </div>
         )}
 
-        <form onSubmit={(e) => handleSubmit(e, tab)}>
+        <form onSubmit={handleSubmit}>
           <div className="row g-3">
-            {/* --- SECCIÓN 1: GENERAL --- */}
-            <div className="col-12"><h6 className="text-primary border-bottom border-secondary pb-2">📦 Información General</h6></div>
-            <div className="col-md-4">
-              <label className="form-label small opacity-75">Nombre</label>
-              <input type="text" className="form-control bg-secondary text-white border-0" value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})} required />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label small opacity-75">Referencia</label>
-              <input type="text" className="form-control bg-secondary text-white border-0" value={form.referencia} onChange={e => setForm({...form, referencia: e.target.value})} />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label small opacity-75">Imagen URL</label>
-              <input type="text" className="form-control bg-secondary text-white border-0" placeholder="https://..." value={form.imagen} onChange={e => setForm({...form, imagen: e.target.value})} />
-            </div>
-            <div className="col-md-3">
-              <label className="form-label small opacity-75">Marca</label>
-              <input type="text" className="form-control bg-secondary text-white border-0" value={form.marca} onChange={e => setForm({...form, marca: e.target.value})} />
-            </div>
-            <div className="col-md-3">
-              <label className="form-label small opacity-75">Tipo</label>
-              <select className="form-select bg-secondary text-white border-0" value={form.tipo} onChange={e => setForm({...form, tipo: e.target.value})}>
-                <option value="">Elegir...</option>
-                <option value="Smartphone">Smartphone</option>
-                <option value="Tablet">Tablet</option>
-                <option value="Laptop">Laptop</option>
-              </select>
-            </div>
-            <div className="col-md-3">
-              <label className="form-label small opacity-75">Precio</label>
-              <input type="number" className="form-control bg-secondary text-white border-0" value={form.precio} onChange={e => setForm({...form, precio: e.target.value})} required />
-            </div>
-            <div className="col-md-3">
-              <label className="form-label small opacity-75">Stock</label>
-              <input type="number" className="form-control bg-secondary text-white border-0" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} />
+
+            <div className="col-12">
+              <h5 className="text-info">
+                Información General
+              </h5>
             </div>
 
-            {/* --- SECCIÓN 2: ESPECIFICACIONES TÉCNICAS --- */}
-            <div className="col-12 mt-4"><h6 className="text-primary border-bottom border-secondary pb-2">🛠️ Especificaciones Técnicas</h6></div>
-            <div className="col-md-4">
-              <label className="form-label small opacity-75">Procesador</label>
-              <input type="text" className="form-control bg-secondary text-white border-0" value={form.procesador} onChange={e => setForm({...form, procesador: e.target.value})} />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label small opacity-75">RAM</label>
-              <input type="text" className="form-control bg-secondary text-white border-0" value={form.ram} onChange={e => setForm({...form, ram: e.target.value})} />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label small opacity-75">Almacenamiento</label>
-              <input type="text" className="form-control bg-secondary text-white border-0" value={form.almacenamiento} onChange={e => setForm({...form, almacenamiento: e.target.value})} />
-            </div>
             <div className="col-md-6">
-              <label className="form-label small opacity-75">Cámaras</label>
-              <input type="text" className="form-control bg-secondary text-white border-0" value={form.camaras} onChange={e => setForm({...form, camaras: e.target.value})} />
+              <label>Nombre</label>
+              <input
+                className="form-control"
+                value={form.nombre}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    nombre: e.target.value
+                  })
+                }
+                required
+              />
             </div>
+
             <div className="col-md-6">
-              <label className="form-label small opacity-75">Batería / Conectividad</label>
-              <input type="text" className="form-control bg-secondary text-white border-0" value={form.bateria} onChange={e => setForm({...form, bateria: e.target.value})} />
+              <label>Referencia</label>
+              <input
+                className="form-control"
+                value={form.referencia}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    referencia: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <div className="col-md-4">
+              <label>Marca</label>
+              <select
+                className="form-select"
+                value={form.marca}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    marca: e.target.value
+                  })
+                }
+              >
+                {marcas.map((m) => (
+                  <option key={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-md-4">
+              <label>Tipo</label>
+              <select
+                className="form-select"
+                value={form.tipo}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    tipo: e.target.value
+                  })
+                }
+              >
+                <option value="Celular">
+                  Celular
+                </option>
+                <option value="Tablet">
+                  Tablet
+                </option>
+                <option value="Portatil">
+                  Portátil
+                </option>
+              </select>
+            </div>
+
+            <div className="col-md-4">
+              <label>Precio</label>
+              <input
+                type="number"
+                className="form-control"
+                value={form.precio}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    precio: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <div className="col-md-6">
+              <label>Imagen</label>
+              <input
+                className="form-control"
+                placeholder="device1.jpg o laptop1.jpg"
+                value={form.imagen}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    imagen: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <div className="col-md-6">
+              <label>Fecha</label>
+              <input
+                type="date"
+                className="form-control"
+                value={form.fecha}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    fecha: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <div className="col-12">
+              <label>Descripción</label>
+              <textarea
+                className="form-control"
+                rows="2"
+                value={form.descripcion}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    descripcion: e.target.value
+                  })
+                }
+              />
             </div>
 
             <div className="col-12 mt-4">
-              <div className="d-flex gap-2">
-                <button type="submit" className={`btn ${tab === 'add' ? 'btn-primary' : 'btn-warning'} flex-grow-1 fw-bold`}>
-                  {tab === 'add' ? 'REGISTRAR NUEVO EQUIPO' : 'GUARDAR CAMBIOS'}
-                </button>
-                {tab === 'edit' && selectedId && (
-                  <button type="button" onClick={handleDelete} className="btn btn-danger fw-bold">ELIMINAR</button>
-                )}
-              </div>
+              <h5 className="text-info">
+                Especificaciones
+              </h5>
             </div>
+
+            <div className="col-md-6">
+              <label>Pantalla</label>
+              <input
+                className="form-control"
+                value={form.pantalla}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    pantalla: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <div className="col-md-6">
+              <label>Procesador</label>
+              <input
+                className="form-control"
+                value={form.procesador}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    procesador: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <div className="col-md-4">
+              <label>RAM</label>
+              <input
+                className="form-control"
+                value={form.ram}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    ram: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <div className="col-md-4">
+              <label>Almacenamiento</label>
+              <input
+                className="form-control"
+                value={form.almacenamiento}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    almacenamiento: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <div className="col-md-4">
+              <label>Batería</label>
+              <input
+                className="form-control"
+                value={form.bateria}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    bateria: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            {(form.tipo === "Celular" ||
+              form.tipo === "Tablet") && (
+              <div className="col-md-6">
+                <label>Cámaras</label>
+                <input
+                  className="form-control"
+                  value={form.camaras}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      camaras: e.target.value
+                    })
+                  }
+                />
+              </div>
+            )}
+
+            {form.tipo === "Portatil" && (
+              <div className="col-md-6">
+                <label>Gráficos</label>
+                <input
+                  className="form-control"
+                  value={form.graficos}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      graficos: e.target.value
+                    })
+                  }
+                />
+              </div>
+            )}
+
+            <div className="col-md-6">
+              <label>Conectividad</label>
+              <input
+                className="form-control"
+                value={form.conectividad}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    conectividad: e.target.value
+                  })
+                }
+              />
+            </div>
+
+            <div className="col-12 d-flex gap-2 mt-4">
+              <button
+                className={`btn ${
+                  tab === "add"
+                    ? "btn-primary"
+                    : "btn-warning"
+                } flex-fill`}
+              >
+                {tab === "add"
+                  ? "Registrar equipo"
+                  : "Guardar cambios"}
+              </button>
+
+              {tab === "edit" &&
+                selectedId && (
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={handleDelete}
+                  >
+                    Eliminar
+                  </button>
+                )}
+            </div>
+
           </div>
         </form>
       </div>

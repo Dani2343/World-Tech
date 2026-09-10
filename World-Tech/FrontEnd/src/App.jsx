@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { devices as localDevices } from "./data/devices"; // Datos locales de respaldo
 import { Filters } from "./components/Filters";
 import { DeviceList } from "./components/DeviceList";
 import { DeviceDetail } from "./components/DeviceDetail";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
-import { AdminPanel } from "./components/AdminPanel"; // El nuevo componente que creaste
+import { AdminPanel } from "./components/AdminPanel";
 import Login from "./components/login";
 
 function App() {
@@ -14,56 +13,140 @@ function App() {
   const [type, setType] = useState("");
   const [sort, setSort] = useState("");
   const [selected, setSelected] = useState(null);
+
   const [showLogin, setShowLogin] = useState(false);
   const [user, setUser] = useState(null);
 
-  // --- NUEVO: ESTADO PARA DISPOSITIVOS DE LA BASE DE DATOS ---
-  const [dbDevices, setDbDevices] = useState([]);
+  // ==========================================
+  // DISPOSITIVOS DESDE MARIADB
+  // ==========================================
 
-  // --- NUEVO: FUNCIÓN PARA TRAER DATOS DEL BACKEND ---
+  const [dbDevices, setDbDevices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // ==========================================
+  // CARGAR DISPOSITIVOS
+  // ==========================================
+
   const fetchDevices = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/devices');
+      setLoading(true);
+
+      const response = await fetch("http://localhost:3001/api/devices");
+
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+
       const data = await response.json();
+
       setDbDevices(data);
     } catch (error) {
-      console.error("Error al cargar dispositivos de la DB:", error);
-      // Si falla la DB, usamos los locales para que no se vea vacío
-      setDbDevices(localDevices);
+      console.error(
+        "Error al cargar dispositivos desde MariaDB:",
+        error
+      );
+
+      setDbDevices([]);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ==========================================
+  // INICIALIZAR APP
+  // ==========================================
+
   useEffect(() => {
-    // Cargar usuario de sesión
     const savedUser = localStorage.getItem("user");
+
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (error) {
+        console.error(
+          "Error al leer usuario guardado:",
+          error
+        );
+
+        localStorage.removeItem("user");
+      }
     }
-    // Cargar productos de la base de datos al iniciar
+
     fetchDevices();
   }, []);
+
+  // ==========================================
+  // CERRAR SESIÓN
+  // ==========================================
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     setUser(null);
     setShowLogin(false);
-    window.location.reload(); 
+    setSelected(null);
   };
 
-  // FILTRAR (Ahora usamos dbDevices que vienen de la base de datos)
-  let filtered = dbDevices.filter(d =>
-    (d.Nombre_Dispositivo || d.name)?.toLowerCase().includes(search.toLowerCase()) &&
-    (brand ? d.Marca_Dispositivo === brand || d.brand === brand : true) &&
-    (type ? d.Tipo_Dispositivo === type || d.type === type : true)
-  );
+  // ==========================================
+  // FILTRAR DISPOSITIVOS
+  // ==========================================
 
-  // ORDENAR
+  let filtered = dbDevices.filter((device) => {
+    const deviceName =
+      device.Nombre_Dispositivo || "";
+
+    const deviceBrand =
+      device.Marca_Dispositivo || "";
+
+    const deviceType =
+      device.Tipo_Dispositivo || "";
+
+    const matchesSearch = deviceName
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesBrand = brand
+      ? deviceBrand === brand
+      : true;
+
+    const matchesType = type
+      ? deviceType === type
+      : true;
+
+    return (
+      matchesSearch &&
+      matchesBrand &&
+      matchesType
+    );
+  });
+
+  // ==========================================
+  // ORDENAR POR FECHA
+  // ==========================================
+
   if (sort === "newest") {
-    filtered.sort((a, b) => new Date(b.Fecha_Lanzamiento || b.releaseDate) - new Date(a.Fecha_Lanzamiento || a.releaseDate));
+    filtered.sort(
+      (a, b) =>
+        new Date(b.Fecha_Lanzamiento) -
+        new Date(a.Fecha_Lanzamiento)
+    );
   }
-  else if (sort === "oldest") {
-    filtered.sort((a, b) => new Date(a.Fecha_Lanzamiento || a.releaseDate) - new Date(b.Fecha_Lanzamiento || b.releaseDate));
+
+  if (sort === "oldest") {
+    filtered.sort(
+      (a, b) =>
+        new Date(a.Fecha_Lanzamiento) -
+        new Date(b.Fecha_Lanzamiento)
+    );
   }
+
+  // ==========================================
+  // VERIFICAR ADMINISTRADOR
+  // ==========================================
+
+  const isAdmin =
+    user?.Rol === "ADMIN" ||
+    user?.rol === "ADMIN";
 
   return (
     <>
@@ -76,59 +159,165 @@ function App() {
       />
 
       <div className="container mt-4">
-        
+
+        {/* =====================================
+            LOGIN
+        ===================================== */}
+
         {showLogin && !user ? (
           <div className="row justify-content-center">
             <div className="col-md-6">
+
               <div className="text-end mb-2">
-                <button className="btn-close" onClick={() => setShowLogin(false)} aria-label="Close"></button>
+                <button
+                  className="btn-close"
+                  onClick={() =>
+                    setShowLogin(false)
+                  }
+                  aria-label="Cerrar"
+                ></button>
               </div>
+
               <Login />
+
             </div>
           </div>
         ) : (
+
           <>
+
+            {/* =================================
+                MENSAJE DE USUARIO
+            ================================= */}
+
             {user && (
-              <div className={`alert ${user.correo === 'danyfel200511@gmail.com' ? 'alert-success' : 'alert-primary'} shadow-sm d-flex align-items-center`}>
+              <div
+                className={`alert ${
+                  isAdmin
+                    ? "alert-success"
+                    : "alert-primary"
+                } shadow-sm d-flex align-items-center`}
+              >
                 <span className="fs-5 me-2">
-                  {user.correo === 'danyfel200511@gmail.com' ? '⚙️' : '👤'}
+                  {isAdmin ? "⚙️" : "👤"}
                 </span>
+
                 <div>
-                  {user.correo === 'danyfel200511@gmail.com' ? (
-                    <><strong>Modo Administrador:</strong> Bienvenido {user.nombre}. Control total de inventario activo.</>
+                  {isAdmin ? (
+                    <>
+                      <strong>
+                        Modo Administrador:
+                      </strong>{" "}
+                      Bienvenido{" "}
+                      {user.Nombre_Usuario ||
+                        user.nombre}
+                      .{" "}
+                      Control de inventario activo.
+                    </>
                   ) : (
-                    <><strong>Modo Cliente:</strong> Bienvenido {user.nombre}.</>
+                    <>
+                      <strong>
+                        Modo Cliente:
+                      </strong>{" "}
+                      Bienvenido{" "}
+                      {user.Nombre_Usuario ||
+                        user.nombre}
+                      .
+                    </>
                   )}
                 </div>
               </div>
             )}
 
-            {/* --- SECCIÓN DE ADMINISTRACIÓN INTEGRADA --- */}
-            {user?.correo === 'danyfel200511@gmail.com' && (
-              <AdminPanel devices={dbDevices} onUpdate={fetchDevices} />
-            )}
+            {/* =================================
+                DETALLE O LISTA
+            ================================= */}
 
             {selected ? (
+
+              // ==================================
+              // DETALLE DEL DISPOSITIVO
+              // ==================================
+
               <DeviceDetail
                 device={selected}
                 back={() => setSelected(null)}
               />
+
             ) : (
+
+              // ==================================
+              // LISTA PRINCIPAL
+              // ==================================
+
               <>
+
+                {/* ==============================
+                    PANEL ADMINISTRADOR
+                ============================== */}
+
+                {isAdmin && (
+                  <AdminPanel
+                    devices={dbDevices}
+                    onUpdate={fetchDevices}
+                  />
+                )}
+
+                {/* ==============================
+                    FILTROS
+                ============================== */}
+
                 <Filters
                   setBrand={setBrand}
                   setType={setType}
                   setSort={setSort}
                 />
 
-                <DeviceList
-                  devices={filtered}
-                  select={setSelected}
-                />
+                {/* ==============================
+                    CARGANDO
+                ============================== */}
+
+                {loading ? (
+
+                  <div className="text-center my-5">
+
+                    <div
+                      className="spinner-border text-primary"
+                      role="status"
+                    >
+                      <span className="visually-hidden">
+                        Cargando...
+                      </span>
+                    </div>
+
+                    <p className="mt-3">
+                      Cargando dispositivos desde
+                      MariaDB...
+                    </p>
+
+                  </div>
+
+                ) : (
+
+                  // ================================
+                  // LISTA DE DISPOSITIVOS
+                  // ================================
+
+                  <DeviceList
+                    devices={filtered}
+                    select={setSelected}
+                  />
+
+                )}
+
               </>
+
             )}
+
           </>
+
         )}
+
       </div>
 
       <Footer />
